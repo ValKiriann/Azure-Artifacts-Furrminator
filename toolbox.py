@@ -59,6 +59,7 @@ def create_versions_table_info(response_data, state):
         else:
             release_versions_array.append(version['version'])
 
+    sorted_versions_array = sorted(versions_array, reverse=True, key=lambda v: semver.VersionInfo.parse(v))
     sorted_releases_array = sorted(release_versions_array, reverse=True, key=lambda v: semver.VersionInfo.parse(v))
     sorted_prereleases_array = sorted(prerelease_versions_array, reverse=True, key=lambda v: semver.VersionInfo.parse(v))
     
@@ -83,7 +84,7 @@ def generate_feed_list(response_object, state):
 def predict_versions_to_clean(response_data, state):
     create_versions_table_info(response_data, state)
 
-    stable_versions_to_keep = 5
+    stable_versions_to_keep = 10
     prerelease_versions_to_keep = 10
 
     package_versions = response_data['data']
@@ -99,7 +100,8 @@ def predict_versions_to_clean(response_data, state):
             prerelease_versions_array.append(version['version'])
         else:
             release_versions_array.append(version['version'])
-    
+
+    sorted_versions_array = sorted(versions_array, reverse=True, key=lambda v: semver.VersionInfo.parse(v))
     sorted_releases_array = sorted(release_versions_array, reverse=True, key=lambda v: semver.VersionInfo.parse(v))
     sorted_prereleases_array = sorted(prerelease_versions_array, reverse=True, key=lambda v: semver.VersionInfo.parse(v))
 
@@ -110,34 +112,72 @@ def predict_versions_to_clean(response_data, state):
     #     rprint("[violet]♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ [violet]")
     #     console.print('[INFO]: Prereleases array:\n {}'.format(sorted_prereleases_array), style="info")
 
-    instructions_message = ("[INFO]: The actual process contemplates to store last {} stable versions and last {} "
+    instructions_message = ("The actual process contemplates to store last {} stable versions and last {} "
         "prerelease versions of the actual working release".format(stable_versions_to_keep,prerelease_versions_to_keep))
-    console.print(instructions_message, style="info")
-    console.print("[INFO]: Based on this, Furrminator recommends you to delete:", style="info")
+    console.print(instructions_message)
 
-    last_prerelease_cleaned = re.sub('(-)(.*)', '', prerelease_versions_array[0])
-    is_actual_release_stable = semver.compare(versions_array[0], last_prerelease_cleaned)
+    release_versions_array_preserve = []
+    prerelease_versions_array_preserve = []
+    release_versions_array_delete = sorted_releases_array.copy()
+    prerelease_versions_array_delete = sorted_prereleases_array.copy()
+
+    if stable_versions_to_keep > len(sorted_releases_array):
+        console.print('[WARN]: There are less stable releases than the minimum setted to be stored', style="warning")
+        console.print('[WARN]: Number or stable releases {}, number of stable versions to keep {}'.format(len(sorted_releases_array), stable_versions_to_keep), style="warning")
+        console.print('[WARN]: Skipping releases purge', style="warning")
+        release_versions_array_preserve = sorted_releases_array.copy()
+        release_versions_array_delete = []
+    else:
+        for i in range(stable_versions_to_keep):
+            release_versions_array_preserve.append(sorted_releases_array[i])
+            release_versions_array_delete.remove(sorted_releases_array[i])
+        # if state["verbose"]:
+            # print('Actual Stable versions', sorted_releases_array)
+            # print('Stable versions to preserve', release_versions_array_preserve)
+            # print('Stable versions to delete', release_versions_array_delete)
+            # rprint("[violet]♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ [violet]")
+            # versions_preview_message = ""
+            # for version in sorted_releases_array:
+            #     if version in release_versions_array_preserve:
+            #         versions_preview_message += version + " "
+            #     elif version in release_versions_array_delete:
+            #         versions_preview_message += "[red bold]" + version + "[/red bold] "
+            #     else:
+            #         versions_preview_message += "[orange bold]" + version + "[/orange bold] "
+            # rprint("Please, confirm that the selected versions are ok. Versions in red will be deleted. If any version is in orange, furrminator does not know what to do with it")
+            # rprint(versions_preview_message)
+
+    last_prerelease_cleaned = re.sub('(-)(.*)', '', sorted_prereleases_array[0])
+    for version in sorted_prereleases_array:
+        if last_prerelease_cleaned in version:
+            if len(prerelease_versions_array_preserve) < 10:
+                prerelease_versions_array_preserve.append(version)
+                prerelease_versions_array_delete.remove(version)
+            else:
+                break
     if state["verbose"]:
-        message = "[INFO] Actual release matches latest prerelease version" if is_actual_release_stable == 0 else "[INFO] Actual release is lower than latest prerelease version"
-        console.print(message.format(versions_array), style="info")
-    if is_actual_release_stable < 0:
-        print('The actual release is lower than the latest prerelease. we recommend storing last 10 prerelease versions of')
-        # TODO: count how many of latest prerelease are in the prerelease array
-        # if more than 10, pop out first 10, leave the rest for the array to present for deletion
-    elif is_actual_release_stable == 0:
-        #TODO: pop out actual release and last 10 prerelease of this version
-        # pop out next 4 release versions to avoid deletion
-        count = 5 if len(versions_array) >= 5 else len(versions_array)
-        versions_array_preserve = []
-        versions_array_delete = sorted_releases_array.copy()
-        for i in range(count):
-            versions_array_preserve.append(sorted_releases_array[i])
-            versions_array_delete.remove(sorted_releases_array[i])
-        if state["verbose"]:
-            print('stable versions array', sorted_releases_array)
-            print('stable versions to preserve', versions_array_preserve)
-            print('stable versions to delete', versions_array_delete)
-            rprint("[violet]♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ [violet]")
+        # print('Actual Prerelease versions', sorted_prereleases_array)
+        # print('Prerelease versions to preserve', prerelease_versions_array_preserve)
+        # print('Prerelease versions to delete', prerelease_versions_array_delete)
+        # rprint("[violet]♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ [violet]")
+        versions_preview_message = ""
+        versions_array_preserve = release_versions_array_preserve.copy() + prerelease_versions_array_preserve.copy()
+        versions_array_delete = release_versions_array_delete.copy() + prerelease_versions_array_delete.copy()
+        if len(versions_array_delete) > 0:
+            for version in sorted_versions_array:
+                if version in versions_array_preserve:
+                    versions_preview_message += "[cyan bold]" + version + "[/cyan bold] "
+                elif version in versions_array_delete:
+                    versions_preview_message += "[red bold]" + version + "[/red bold] "
+                else:
+                    versions_preview_message += "[orange bold]" + version + "[/orange bold] "
+            print("Based on this, Furrminator recommends you to delete:")
+            rprint(versions_preview_message)
+            rprint("Please, confirm that the selected versions are ok. Versions in [red bold]red[/red bold] will be deleted. If any version is in [orange bold]orange[/orange bold], furrminator does not know what to do with it")
+        else:
+            rprint("Based on this, there are no versions that meet the criteria of deletion")
+            raise typer.Exit()
+            
 
 def exit(actual_response, state):
     console.print("Have a nice day!", style="info")

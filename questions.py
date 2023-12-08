@@ -84,10 +84,6 @@ get_versions_questions_list = questions = [
         'message': 'Select what do you want to do: ',
         'choices': [
             {
-                'name': 'Describe versions',
-                'value': 'view_versions_table'
-            },
-            {
                 'name': 'Show all versions to delete',
                 'value': 'select_bulk_deletion'
             },
