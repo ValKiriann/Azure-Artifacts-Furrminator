@@ -159,28 +159,23 @@ def predict_versions_to_clean(response_data, state):
                     prerelease_versions_array_delete.remove(version)
                 else:
                     break
-    # if state["verbose"]:
-        # print('Actual Prerelease versions', sorted_prereleases_array)
-        # print('Prerelease versions to preserve', prerelease_versions_array_preserve)
-        # print('Prerelease versions to delete', prerelease_versions_array_delete)
-        # rprint("[violet]♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ [violet]")
-        versions_preview_message = ""
-        versions_array_preserve = release_versions_array_preserve.copy() + prerelease_versions_array_preserve.copy()
-        versions_array_delete = release_versions_array_delete.copy() + prerelease_versions_array_delete.copy()
-        if len(versions_array_delete) > 0:
-            for version in sorted_versions_array:
-                if version in versions_array_preserve:
-                    versions_preview_message += "[cyan bold]" + version + "[/cyan bold] "
-                elif version in versions_array_delete:
-                    versions_preview_message += "[red bold]" + version + "[/red bold] "
-                else:
-                    versions_preview_message += "[orange bold]" + version + "[/orange bold] "
-            print("Based on this, Furrminator recommends you to delete:")
-            rprint(versions_preview_message)
-            rprint("Please, confirm that the selected versions are ok. Versions in [red bold]red[/red bold] will be deleted. If any version is in [orange bold]orange[/orange bold], furrminator does not know what to do with it")
-        else:
-            rprint("Based on this, there are no versions that meet the criteria of deletion")
-            raise typer.Exit()
+    versions_preview_message = ""
+    versions_array_preserve = release_versions_array_preserve.copy() + prerelease_versions_array_preserve.copy()
+    versions_array_delete = release_versions_array_delete.copy() + prerelease_versions_array_delete.copy()
+    if len(versions_array_delete) > 0:
+        for version in sorted_versions_array:
+            if version in versions_array_preserve:
+                versions_preview_message += "[cyan bold]" + version + "[/cyan bold] "
+            elif version in versions_array_delete:
+                versions_preview_message += "[red bold]" + version + "[/red bold] "
+            else:
+                versions_preview_message += "[orange bold]" + version + "[/orange bold] "
+        print("Based on this, Furrminator recommends you to delete:")
+        rprint(versions_preview_message)
+        rprint("Please, confirm that the selected versions are ok. Versions in [red bold]red[/red bold] will be deleted. If any version is in [orange bold]orange[/orange bold], furrminator does not know what to do with it")
+    else:
+        rprint("Based on this, there are no versions that meet the criteria of deletion")
+        raise typer.Exit()
             
 
 def exit(actual_response, state):
