@@ -1,5 +1,5 @@
 import requests
-from toolbox import generate_feed_list
+from toolbox import generate_feed_list, create_versions_table_info
 import typer
 from dotenv import load_dotenv
 import os
@@ -229,7 +229,9 @@ def get_versions(action_response, state):
             console.print('[INFO]: I have found {0} results'.format(response_count), style="info")
             # time.sleep(1)
 
-        return {'data': response_value, 'package_name': package_name, 'continue': True}
+        action_response = {'data': response_value, 'package_name': package_name, 'continue': True}
+        create_versions_table_info(action_response, state)
+        return action_response
 
     else:
         console.print("[ERROR]: Get Versions error -", response.content, style="danger")
