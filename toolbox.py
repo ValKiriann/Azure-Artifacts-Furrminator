@@ -147,15 +147,19 @@ def predict_versions_to_clean(response_data, state):
             # rprint("Please, confirm that the selected versions are ok. Versions in red will be deleted. If any version is in orange, furrminator does not know what to do with it")
             # rprint(versions_preview_message)
 
-    last_prerelease_cleaned = re.sub('(-)(.*)', '', sorted_prereleases_array[0])
-    for version in sorted_prereleases_array:
-        if last_prerelease_cleaned in version:
-            if len(prerelease_versions_array_preserve) < 10:
-                prerelease_versions_array_preserve.append(version)
-                prerelease_versions_array_delete.remove(version)
-            else:
-                break
-    if state["verbose"]:
+    if sorted_prereleases_array == 0:
+        console.print('[WARN]: There are no prereleases for the package {}'.format(package_name), style="warning")
+        console.print('[WARN]: Skipping pre-releases purge', style="warning")
+    else:
+        last_prerelease_cleaned = re.sub('(-)(.*)', '', sorted_prereleases_array[0])
+        for version in sorted_prereleases_array:
+            if last_prerelease_cleaned in version:
+                if len(prerelease_versions_array_preserve) < 10:
+                    prerelease_versions_array_preserve.append(version)
+                    prerelease_versions_array_delete.remove(version)
+                else:
+                    break
+    # if state["verbose"]:
         # print('Actual Prerelease versions', sorted_prereleases_array)
         # print('Prerelease versions to preserve', prerelease_versions_array_preserve)
         # print('Prerelease versions to delete', prerelease_versions_array_delete)

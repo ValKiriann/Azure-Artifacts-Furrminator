@@ -2,7 +2,7 @@ start_questions_list = questions = [
     {
         'type': 'list',
         'name': 'action',
-        'message': 'Select what do you want to do: ',
+        'message': 'Select what do you want to do:',
         'choices': [
             {
                 'name': 'Get Feeds',
@@ -27,7 +27,7 @@ get_feeds_questions_list = questions = [
     {
         'type': 'list',
         'name': 'action',
-        'message': 'Select what do you want to do: ',
+        'message': 'Select what do you want to do:',
         'choices': [
             {
                 'name': 'List information of the feeds',
@@ -48,7 +48,7 @@ get_packages_questions_list = questions = [
     {
         'type': 'list',
         'name': 'action',
-        'message': 'Select what do you want to do: ',
+        'message': 'Select what do you want to do:',
         'choices': [
             {
                 'name': 'List information of the packages',
@@ -81,7 +81,7 @@ get_versions_questions_list = questions = [
     {
         'type': 'list',
         'name': 'action',
-        'message': 'Select what do you want to do: ',
+        'message': 'Select what do you want to do:',
         'choices': [
             {
                 'name': 'Show all versions to delete',
