@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from questions import *
+import versions_controller
 from toolbox import asciiLogo, createTableInfo, create_versions_table_info, predict_versions_to_clean, exit
 from api_calls import get_feeds, get_packages, get_versions
 import typer
@@ -7,6 +8,7 @@ from PyInquirer import prompt
 from rich import print as rprint
 from rich.console import Console
 from rich.theme import Theme
+import json
 custom_theme = Theme({
     "info": "dim cyan",
     "warning": "magenta",
@@ -29,6 +31,12 @@ methods = {
     },
     'get_versions': {
         'call': get_versions,
+    },
+    'select_bulk_deletion': {
+        'call': predict_versions_to_clean
+    },
+    'delete_version': {
+        'call': versions_controller.delete
     }
 }
 
@@ -39,9 +47,6 @@ sub_methods = {
     'view_versions_table': {
         'call': create_versions_table_info
     },
-    'select_bulk_deletion': {
-        'call': predict_versions_to_clean
-    }
 }
 
 app = typer.Typer()
@@ -65,6 +70,22 @@ def init():
             method_list_question = get_packages_questions_list
         elif actual_action == 'get_versions':
             method_list_question = get_versions_questions_list
+        # elif actual_action == 'delete_version':
+        #     delete_controller.delete_version(action_response, state)
+
+        #     raise typer.Exit()
+        elif actual_action == 'select_bulk_deletion':
+            delete = typer.confirm("Are you sure you want to delete it?", abort=True)
+            print("Proceeding to delete")
+            delete_response = versions_controller.bulk_delete(action_response, state)
+            if len(delete_response['delete_errors']) > 0:
+                console.print('[ERROR]: Errors where found while deleting', style="danger")
+                console.print(json.dumps(delete_response['delete_errors'], indent=2), style="danger")
+            else:
+                print('Versions were deleted successfully')
+                exit(action_response, state)
+
+            raise typer.Exit()
         else:
             console.print("[ERROR]: Unknown action -", actual_action, style="danger")
             raise typer.Abort()
@@ -75,10 +96,11 @@ def init():
         if selected_action['action'] in methods.keys():
             selected_action = selected_action['action']
             action_response = methods[selected_action]['call'](action_response, state)
-            if action_response['continue']:
-                actual_action = selected_action
-            else:
-                actual_action = exit
+            actual_action = selected_action
+            # if action_response['continue']:
+            #     actual_action = selected_action
+            # else:
+            #     actual_action = exit
         else:
             sub_methods[selected_action['action']]['call'](action_response, state)
 

@@ -1,5 +1,7 @@
 import requests
-from toolbox import generate_feed_list, create_versions_table_info
+from toolbox import sanitize_feed_info, generate_feed_list, create_versions_table_info, sanitize_package_info, obtain_versions_from_package
+import json
+import ast
 import typer
 from dotenv import load_dotenv
 import os
@@ -45,6 +47,7 @@ def get_feeds(action_response, state):
     
 def get_packages(action_response, state):
     url = ''
+    selected_feed = {}
     if 'feed' not in action_response:
         if not action_response['data']:
             action_response = get_feeds(action_response, state)
@@ -59,13 +62,16 @@ def get_packages(action_response, state):
             }
         ]
         selected_feed = prompt(feed_list_question)
-
-        url = selected_feed['feed']
+        selected_feed = selected_feed['feed']
+        url = selected_feed['feed_url']
     else:
-        url = action_response['feed']['value']
-
+        url = action_response['feed']['feed_url']
+        selected_feed = action_response['feed']
     headers = { 'Content-Type': 'application/json' }
     parameters = { 'api-version':'7.1-preview.1' }
+    if state["verbose"]:
+        console.print("[INFO]: URL {}".format(url), style="info")
+        # time.sleep(1)
     response = requests.get(url, params=parameters, headers=headers, auth=(PAT,''))
     status_code = response.status_code
 
@@ -80,7 +86,7 @@ def get_packages(action_response, state):
             console.print('[INFO]: I have found {0} results'.format(response_count), style="info")
             # time.sleep(1)
 
-        return {'data': response_value, 'continue': True}
+        return {'data': response_value, 'feed': selected_feed, 'continue': True}
     else:
         console.print("[ERROR]: Get Packages error -", response.content, style="danger")
         raise typer.Abort()
@@ -124,7 +130,7 @@ def get_versions(action_response, state):
             selected_feed = {}
             for feed in feed_list:
                 if feed['name'] == input_feed:
-                    selected_feed = feed
+                    selected_feed = feed['value']
                     break
             if len(selected_feed) == 0:
                 console.print('[ERROR]: The feed {} was not found in Azure. Valid feeds are:'.format(input_feed), style="danger")
@@ -150,7 +156,8 @@ def get_versions(action_response, state):
 
             package_list = list()
             for package in action_response['data']:
-                package_list.append({ 'name':package['name'], 'value':package['_links']['versions']['href'] })
+                package_info = sanitize_package_info(package, state)
+                package_list.append({ 'name':package['name'], 'value':package_info })
 
             if input_package:
                 if state["verbose"]:
@@ -159,11 +166,12 @@ def get_versions(action_response, state):
                 selected_package = {}
                 for package in package_list:
                     if package['name'] == input_package:
-                        selected_package = package
+                        selected_package = package['value']
                         if state["verbose"]:
                             console.print("[INFO]: selected_package: {}".format(selected_package), style="info")
                             # time.sleep(1)
-                        url = selected_package['value']
+                        url = selected_package['package_versions_url']
+                        action_response['package'] = selected_package
                         break
                 if len(selected_package) == 0:
                     console.print('[ERROR]: The package {} was not found in Azure. Valid packages for the feed {} are:'.format(input_package, input_feed), style="danger")
@@ -179,7 +187,8 @@ def get_versions(action_response, state):
 
                 choose_package_question = choose_package_from_list_question(package_list)
                 selected_package = prompt(choose_package_question)
-                url = selected_package['package']
+                url = selected_package['package']['package_versions_url']
+                action_response['package'] = selected_package['package']
 
         else:
             # we dont have the feed but we got the package (or at least some kind of package)
@@ -195,11 +204,14 @@ def get_versions(action_response, state):
 
         package_list = list()
         for package in action_response['data']:
-            package_list.append({ 'name':package['name'], 'value':package['_links']['versions']['href'] })
+            package_info = sanitize_package_info(package, state)
+            # package_list.append({ 'name':package['name'], 'value':package['_links']['versions']['href'] })
+            package_list.append({ 'name':package['name'], 'value':package_info })
                 
         choose_package_question = choose_package_from_list_question(package_list)
         selected_package = prompt(choose_package_question)
-        url = selected_package['package']
+        url = selected_package['package']['package_versions_url']
+        action_response['package'] = selected_package['package']
 
     
     if state["verbose"]:
@@ -210,7 +222,7 @@ def get_versions(action_response, state):
     parameters = { 'api-version':'7.1-preview.1' }
 
     for package in package_list:
-        if package['value'] == url:
+        if package['value']['package_versions_url'] == url:
             package_name = package['name']
             break
 
@@ -229,10 +241,34 @@ def get_versions(action_response, state):
             console.print('[INFO]: I have found {0} results'.format(response_count), style="info")
             # time.sleep(1)
 
-        action_response = {'data': response_value, 'package_name': package_name, 'continue': True}
-        create_versions_table_info(action_response, state)
+        action_response['data'] = response_value
+        action_response['versions'] = obtain_versions_from_package(action_response, state)
+        create_versions_table_info(action_response['package'], action_response['versions'])
         return action_response
 
     else:
         console.print("[ERROR]: Get Versions error -", response.content, style="danger")
         raise typer.Abort()
+    
+def delete_version(url, state):
+    headers = { 'Content-Type': 'application/json' }
+    parameters = { 'api-version':'7.1-preview.1' }
+
+    response = requests.delete(url, params=parameters, headers=headers, auth=(PAT,''))
+    status_code = response.status_code
+
+    if state["verbose"]:
+        console.print("[INFO]: Status Code of petition - Get Feeds", status_code, style="info")
+    
+    if status_code == 202:
+
+        if state["verbose"]:
+            console.print('[INFO]: Deleted successfully', style="info")
+
+        return True
+    else:
+        if state["verbose"]:
+            console.print('[ERROR]: Error while deleting: {}'.format(response.content), style="danger")
+        print(type(response.content))
+        error_response = json.loads(response.content)
+        return error_response
