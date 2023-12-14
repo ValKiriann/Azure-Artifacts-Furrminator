@@ -35,10 +35,21 @@ def delete(response_data, state):
     print(version)
     print(response_data.keys())
     if version in versions['versions_array']:
-        print('Version {} found'.format(version))
+        # print('Version {} found'.format(version))
+
+        if version in versions['prediction']['versions_array_delete']:
+            console.print('Version {} was found in the prediction policy to delete'.format(version))
+        else:
+            console.print('[warning]: Version {} was not found in the prediction policy to delete'.format(version), style="warning")
+
+        delete = typer.confirm("Are you sure you want to delete it?", abort=True)
+        print('Version {} was deleted successfully'.format(version))
+        raise typer.Exit()
     else:
         print('version {} not found'.format(version))
-    raise typer.Exit()
+        console.print('[ERROR]: version {} not found'.format(version), style="danger")
+        console.print('[ERROR]: Current listed versions for {}: {}'.format(response_data['package_name'], versions['versions_array']), style="danger")
+        raise typer.Exit()
 
 '''
 @function delete_in_bulk
