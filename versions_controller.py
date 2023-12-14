@@ -1,7 +1,9 @@
 from api_calls import delete_version
+from versions_service import generate_delete_url
 import typer
 from dotenv import load_dotenv
 import os
+import json
 from rich import print as rprint
 from rich.table import Table
 from rich.console import Console
@@ -40,15 +42,22 @@ def delete(response_data, state):
         if version in versions['prediction']['versions_array_delete']:
             console.print('Version {} was found in the prediction policy to delete'.format(version))
         else:
-            console.print('[warning]: Version {} was not found in the prediction policy to delete'.format(version), style="warning")
+            console.print('[WARNING]: Version {} was not found in the prediction policy to delete'.format(version), style="warning")
 
         delete = typer.confirm("Are you sure you want to delete it?", abort=True)
-        print('Version {} was deleted successfully'.format(version))
-        raise typer.Exit()
+        url = generate_delete_url(response_data['package'], response_data['feed'], version, state)
+        delete_result = delete_version(url, state)
+        if type(delete_result) != bool:
+            console.print('[ERROR]: An error was found while deleting', style="danger")
+            console.print(json.dumps(delete_result, indent=2), style="danger")
+            raise typer.Exit()
+        else:
+            print('Version {} was deleted successfully'.format(version))
+            raise typer.Exit()
     else:
         print('version {} not found'.format(version))
         console.print('[ERROR]: version {} not found'.format(version), style="danger")
-        console.print('[ERROR]: Current listed versions for {}: {}'.format(response_data['package_name'], versions['versions_array']), style="danger")
+        console.print('[ERROR]: Current listed versions for {}: {}'.format(response_data['package']['package_name'], versions['versions_array']), style="danger")
         raise typer.Exit()
 
 '''
@@ -69,23 +78,7 @@ def bulk_delete(response_data, state):
     feed = response_data['feed']
     errors = []
     for version in package['versions_array_delete']:
-        if package['package_type'] == 'maven':
-            url = 'https://pkgs.dev.azure.com/{}/{}/_apis/packaging/feeds/{}/maven/groups/{}/artifacts/{}/versions/{}'.format(ORGANIZATION, feed['project_id'], feed['feed_id'], package['group_id'], package['artifact_name'], version)
-        elif package['package_type'] == 'Npm':
-            if 'project_id' in feed:
-                url = 'https://pkgs.dev.azure.com/{}/{}/_apis/packaging/feeds/{}/npm/{}/versions/{}'.format(ORGANIZATION, feed['project_id'], feed['feed_id'], package['package_name'], version)
-            else:
-                url = 'https://pkgs.dev.azure.com/{}/_apis/packaging/feeds/{}/npm/{}/versions/{}'.format(ORGANIZATION, feed['feed_id'], package['package_name'], version)
-        elif package['package_type'] == 'UPack':
-            if 'project_id' in feed:
-                url = 'https://pkgs.dev.azure.com/{}/{}/_apis/packaging/feeds/{}/upack/packages/{}/versions/{}'.format(ORGANIZATION, feed['project_id'], feed['feed_id'], package['package_name'], version )
-            else:
-                url = 'https://pkgs.dev.azure.com/{}/_apis/packaging/feeds/{}/upack/packages/{}/versions/{}'.format(ORGANIZATION, feed['feed_id'], package['package_name'], version )
-            
-        else:
-            console.print("[ERROR]: Unknown package_type -", package['package_type'], style="danger")
-            raise typer.Abort()
-
+        url = generate_delete_url(package, feed, version, state)
         delete_result = delete_version(url, state)
         if type(delete_result) != bool:
             errors.append({version: delete_result})

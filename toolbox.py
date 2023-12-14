@@ -94,11 +94,11 @@ def sanitize_feed_info(feed, state):
     }
     
     if state["verbose"]:
-        console.print("[INFO]: Checking if this feed has a project", style="info")
+        console.print("[INFO]: Checking if {} feed has a project".format(feed), style="info")
 
     if 'project' in feed.keys():
         if state["verbose"]:
-            console.print("[INFO]: Found project in feed, saving details", style="info")
+            console.print('[INFO]: Found project in {} feed, saving details'.format(feed), style="info")
         feed_info['project_name'] = feed['project']['name']
         feed_info['project_id'] = feed['project']['id']
     

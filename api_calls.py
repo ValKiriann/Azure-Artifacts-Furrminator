@@ -83,9 +83,11 @@ def get_packages(action_response, state):
         response_count = response_json['count']
         response_value = response_json['value']
         if state["verbose"]:
-            console.print('[INFO]: I have found {0} results'.format(response_count), style="info")
+            console.print('[INFO]: I have found {} results'.format(response_count), style="info")
             # time.sleep(1)
-
+        if response_count == 0:
+            console.print('[ERROR]: No Packages were found for feed {}'.format(selected_feed['feed_name']), style="danger")
+            raise typer.Abort()
         return {'data': response_value, 'feed': selected_feed, 'continue': True}
     else:
         console.print("[ERROR]: Get Packages error -", response.content, style="danger")
@@ -260,8 +262,7 @@ def delete_version(url, state):
     if state["verbose"]:
         console.print("[INFO]: Status Code of petition - Get Feeds", status_code, style="info")
     
-    if status_code == 202:
-
+    if 200 <= status_code <= 299:
         if state["verbose"]:
             console.print('[INFO]: Deleted successfully', style="info")
 
